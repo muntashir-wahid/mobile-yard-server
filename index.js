@@ -3,6 +3,7 @@
 // ----------------- //
 const express = require("express");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const morgan = require("morgan");
 require("dotenv").config();
@@ -43,6 +44,30 @@ async function run() {
     // All Collections
     const db = client.db("mobileYard");
     const brandsCollection = db.collection("brands");
+    const usersCollection = db.collection("users");
+
+    // ----------- //
+    // Issue a jwt
+    // ----------- //
+
+    app.get("/api/v1/jwt", (req, res) => {
+      const email = req.query.email;
+
+      jwt.sign(
+        { email },
+        process.env.SECRET_KEY,
+        { expiresIn: "1h" },
+        function (err, token) {
+          if (err) {
+            res.status(500).send("something broke");
+          }
+          res.status(200).json({
+            success: true,
+            token,
+          });
+        }
+      );
+    });
 
     // -------------- //
     // Create a brand
@@ -80,6 +105,23 @@ async function run() {
         success: true,
         data: {
           availableBrands,
+        },
+      });
+    });
+
+    // --------------- //
+    // Create a user
+    // --------------- //
+    app.post("/api/v1/users", async (req, res) => {
+      const user = req.body;
+
+      const result = await usersCollection.insertOne(user);
+      user._id = result.insertedId;
+
+      res.status(201).json({
+        success: true,
+        data: {
+          user,
         },
       });
     });

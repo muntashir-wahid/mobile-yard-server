@@ -67,6 +67,22 @@ async function run() {
         },
       });
     });
+
+    // --------------- //
+    // Read all brands
+    // --------------- //
+
+    app.get("/api/v1/brands", async (req, res) => {
+      const query = {};
+      const availableBrands = await brandsCollection.find(query).toArray();
+
+      res.status(200).json({
+        success: true,
+        data: {
+          availableBrands,
+        },
+      });
+    });
   } finally {
   }
 }

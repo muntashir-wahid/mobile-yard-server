@@ -46,11 +46,35 @@ async function run() {
     const brandsCollection = db.collection("brands");
     const usersCollection = db.collection("users");
 
+    // --------------------- //
+    // Custome Middlewared
+    // ---------------------- //
+
+    const checkUser = async (req, res, next) => {
+      const { email, registered } = req.query;
+
+      if (registered === "false") {
+        return next();
+      }
+
+      const query = { email };
+
+      const storedUser = await usersCollection.find(query).toArray();
+
+      if (storedUser.length) {
+        return next();
+      }
+      res.status(400).json({
+        success: false,
+        message: "no user found",
+      });
+    };
+
     // ----------- //
     // Issue a jwt
     // ----------- //
 
-    app.get("/api/v1/jwt", (req, res) => {
+    app.get("/api/v1/jwt", checkUser, async (req, res) => {
       const email = req.query.email;
 
       jwt.sign(

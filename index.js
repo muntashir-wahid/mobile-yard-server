@@ -6,6 +6,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const morgan = require("morgan");
+const { decode } = require("punycode");
 require("dotenv").config();
 
 const app = express();
@@ -45,11 +46,13 @@ async function run() {
     const db = client.db("mobileYard");
     const brandsCollection = db.collection("brands");
     const usersCollection = db.collection("users");
+    const phonesCollection = db.collection("phones");
 
     // --------------------- //
     // Custome Middlewared
     // ---------------------- //
 
+    // Check user
     const checkUser = async (req, res, next) => {
       const { email, registered } = req.query;
 
@@ -67,6 +70,51 @@ async function run() {
       res.status(400).json({
         success: false,
         message: "no user found",
+      });
+    };
+
+    // Check seller
+
+    const checkSeller = async (req, res, next) => {
+      const { email: decodedEmail } = req.decoded;
+
+      const user = await usersCollection.findOne({ email: decodedEmail });
+
+      if (!user || user.accountType !== "seller") {
+        return res.status(403).json({
+          success: false,
+          message: "unauthorized access",
+        });
+      }
+
+      next();
+    };
+
+    // ----------- //
+    // Verify jwt
+    // ----------- //
+
+    const verifyJWT = (req, res, next) => {
+      const authorization = req.headers.authorization;
+      if (!authorization) {
+        return res.status(401).json({
+          success: false,
+          message: "unauthorized access",
+        });
+      }
+
+      const [_, token] = authorization.split(" ");
+
+      jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+        if (err) {
+          return res.status(403).json({
+            success: false,
+            message: "unauthorizes access",
+          });
+        }
+
+        req.decoded = decoded;
+        next();
       });
     };
 
@@ -118,11 +166,12 @@ async function run() {
     });
 
     // --------------- //
-    // Read all brands
+    // Get all brands
     // --------------- //
 
     app.get("/api/v1/brands", async (req, res) => {
       const query = {};
+
       const availableBrands = await brandsCollection.find(query).toArray();
 
       res.status(200).json({
@@ -165,6 +214,23 @@ async function run() {
         success: true,
         data: {
           user,
+        },
+      });
+    });
+
+    // --------------- //
+    // Create a phone
+    // --------------- //
+    app.post("/api/v1/phones", verifyJWT, checkSeller, async (req, res) => {
+      const phone = req.body;
+
+      const result = await phonesCollection.insertOne(phone);
+      phone._id = result.insertedId;
+
+      res.status(201).json({
+        success: true,
+        data: {
+          phone,
         },
       });
     });

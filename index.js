@@ -149,6 +149,25 @@ async function run() {
         },
       });
     });
+
+    // --------------- //
+    // Get a user
+    // --------------- //
+
+    app.get("/api/v1/users", async (req, res) => {
+      const email = req.query.email;
+
+      const query = { email };
+
+      const user = await usersCollection.findOne(query);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          user,
+        },
+      });
+    });
   } finally {
   }
 }

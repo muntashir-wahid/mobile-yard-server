@@ -4,7 +4,7 @@
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const morgan = require("morgan");
 const { decode } = require("punycode");
 require("dotenv").config();
@@ -265,7 +265,7 @@ async function run() {
     });
 
     // ----------------------- //
-    // Get phone under a brand
+    // Get phones under a brand
     // ---------------------- //
 
     app.get("/api/v1/phones/:brandId", async (req, res) => {
@@ -279,6 +279,43 @@ async function run() {
         data: { phones },
       });
     });
+
+    // ----------------------- //
+    // Get phones of a seller
+    // ---------------------- //
+
+    app.get("/api/v1/phones", verifyJWT, checkSeller, async (req, res) => {
+      const sellerEmail = req.query.email;
+      const query = { sellerEmail };
+      const phones = await phonesCollection
+        .find(query)
+        .project({ phoneName: 1, state: 1, isAdvertised: 1, resellingPrice: 1 })
+        .toArray();
+      res.status(200).json({
+        success: true,
+        data: {
+          phones,
+        },
+      });
+    });
+
+    // ------------------------- //
+    // Delete a phone by seller
+    // ------------------------ //
+
+    app.delete(
+      "/api/v1/phones/:id",
+      verifyJWT,
+      checkSeller,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: ObjectId(id) };
+
+        const result = await phonesCollection.deleteOne(filter);
+
+        res.status(200).json(result);
+      }
+    );
 
     // --------------- //
     // Create a booking

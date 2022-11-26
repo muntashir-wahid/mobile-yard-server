@@ -47,6 +47,7 @@ async function run() {
     const brandsCollection = db.collection("brands");
     const usersCollection = db.collection("users");
     const phonesCollection = db.collection("phones");
+    const bookingsCollection = db.collection("bookings");
 
     // --------------------- //
     // Custome Middlewared
@@ -84,6 +85,24 @@ async function run() {
         return res.status(403).json({
           success: false,
           message: "unauthorized access",
+        });
+      }
+
+      next();
+    };
+
+    // Chacke already booking
+
+    const checkAlreadyBooking = async (req, res, next) => {
+      const body = req.body;
+      const { bookerContact, meetingLocation, ...rest } = body;
+
+      const alreadyBooking = await bookingsCollection.findOne(rest);
+
+      if (alreadyBooking) {
+        return res.json({
+          success: false,
+          message: "Cant book an item twice",
         });
       }
 
@@ -250,6 +269,29 @@ async function run() {
         data: { phones },
       });
     });
+
+    // --------------- //
+    // Create a booking
+    // --------------- //
+
+    app.post(
+      "/api/v1/bookings",
+      verifyJWT,
+      checkAlreadyBooking,
+      async (req, res) => {
+        const booking = req.body;
+
+        const result = await bookingsCollection.insertOne(booking);
+        booking._id = result.insertedId;
+
+        res.status(201).json({
+          success: true,
+          data: {
+            booking,
+          },
+        });
+      }
+    );
   } finally {
   }
 }

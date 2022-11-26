@@ -299,6 +299,8 @@ async function run() {
       });
     });
 
+    // app.get("")
+
     // ------------------------- //
     // Delete a phone by seller
     // ------------------------ //
@@ -312,6 +314,37 @@ async function run() {
         const filter = { _id: ObjectId(id) };
 
         const result = await phonesCollection.deleteOne(filter);
+
+        res.status(200).json(result);
+      }
+    );
+
+    // --------------------------- //
+    // Update some filed of phones
+    // -------------------------- //
+
+    app.patch(
+      "/api/v1/phones/:id",
+      verifyJWT,
+      checkSeller,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: ObjectId(id) };
+        const query = req.query;
+
+        let result;
+
+        if (query?.advertise) {
+          result = await phonesCollection.updateOne(filter, {
+            $set: {
+              isAdvertised: true,
+            },
+          });
+        }
+
+        if (query?.state) {
+          console.log("sold");
+        }
 
         res.status(200).json(result);
       }

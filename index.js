@@ -119,6 +119,24 @@ async function run() {
       next();
     };
 
+    // Chack query for phones
+
+    const checkQuerys = async (req, res, next) => {
+      const query = req.query;
+      if (query?.isAdvertised) {
+        const filter = { isAdvertised: true };
+        const phones = await phonesCollection.find(filter).toArray();
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            phones,
+          },
+        });
+      }
+      next();
+    };
+
     // ----------- //
     // Verify jwt
     // ----------- //
@@ -284,22 +302,32 @@ async function run() {
     // Get phones of a seller
     // ---------------------- //
 
-    app.get("/api/v1/phones", verifyJWT, checkSeller, async (req, res) => {
-      const sellerEmail = req.query.email;
-      const query = { sellerEmail };
-      const phones = await phonesCollection
-        .find(query)
-        .project({ phoneName: 1, state: 1, isAdvertised: 1, resellingPrice: 1 })
-        .toArray();
-      res.status(200).json({
-        success: true,
-        data: {
-          phones,
-        },
-      });
-    });
+    app.get(
+      "/api/v1/phones",
+      checkQuerys,
+      verifyJWT,
+      checkSeller,
+      async (req, res) => {
+        const sellerEmail = req.query.email;
 
-    // app.get("")
+        const query = { sellerEmail };
+        const phones = await phonesCollection
+          .find(query)
+          .project({
+            phoneName: 1,
+            state: 1,
+            isAdvertised: 1,
+            resellingPrice: 1,
+          })
+          .toArray();
+        res.status(200).json({
+          success: true,
+          data: {
+            phones,
+          },
+        });
+      }
+    );
 
     // ------------------------- //
     // Delete a phone by seller

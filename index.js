@@ -234,6 +234,22 @@ async function run() {
         },
       });
     });
+
+    // ----------------------- //
+    // Get phone under a brand
+    // ---------------------- //
+
+    app.get("/api/v1/phones/:brandId", async (req, res) => {
+      const phoneBrand = req.params.brandId;
+      const query = { phoneBrand };
+
+      const phones = await phonesCollection.find(query).toArray();
+
+      res.status(200).json({
+        success: true,
+        data: { phones },
+      });
+    });
   } finally {
   }
 }

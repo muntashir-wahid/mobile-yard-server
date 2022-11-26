@@ -95,6 +95,16 @@ async function run() {
 
     const checkAlreadyBooking = async (req, res, next) => {
       const body = req.body;
+      const { email: decodedEmail } = req.decoded;
+      const { bookerEmail } = body;
+
+      if (bookerEmail !== decodedEmail) {
+        return res.status(403).json({
+          success: false,
+          message: "unauthorized access",
+        });
+      }
+
       const { bookerContact, meetingLocation, ...rest } = body;
 
       const alreadyBooking = await bookingsCollection.findOne(rest);

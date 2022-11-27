@@ -91,6 +91,28 @@ async function run() {
       next();
     };
 
+    // Check a sellers verified status
+    const checkSellerVerifedStatus = async (req, res, next) => {
+      const query = req.query;
+      if (query?.email && query?.checkFor) {
+        const filter = {
+          email: query?.email,
+          accountType: "seller",
+          isVerified: true,
+        };
+
+        const verifiedSeller = await usersCollection.findOne(filter);
+
+        if (verifiedSeller) {
+          return res.send({ isVerified: true });
+        } else {
+          return res.send({ isVerified: false });
+        }
+      }
+
+      next();
+    };
+
     // Check admin
 
     const checkAdmin = async (req, res, next) => {
@@ -270,7 +292,7 @@ async function run() {
     // Get a user
     // --------------- //
 
-    app.get("/api/v1/users", async (req, res) => {
+    app.get("/api/v1/users", checkSellerVerifedStatus, async (req, res) => {
       const email = req.query.email;
       const accountType = req.query.accountType;
 

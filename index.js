@@ -91,6 +91,26 @@ async function run() {
       next();
     };
 
+    // Check admin
+
+    const checkAdmin = async (req, res, next) => {
+      const { email: decodedEmail } = req.decoded;
+
+      const isAdmin = await usersCollection.findOne({
+        email: decodedEmail,
+        accountType: "admin",
+      });
+
+      if (!isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "unauthorized access",
+        });
+      }
+
+      next();
+    };
+
     // Chacke already booking
 
     const checkAlreadyBooking = async (req, res, next) => {
@@ -257,7 +277,6 @@ async function run() {
       // Get buyers or sellers
       if (!email && accountType) {
         const query = { accountType };
-        console.log(query);
 
         const users = await usersCollection.find(query).toArray();
 
@@ -282,20 +301,44 @@ async function run() {
     });
 
     // --------------- //
-    // Get all users
+    // Verify a seller
     // --------------- //
 
-    // app.get("/api/v1/users", async (req, res) => {
-    //   const query = {};
+    app.put("/api/v1/users/:id", verifyJWT, checkAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          isVerified: true,
+        },
+      };
+      const options = { upsert: true };
 
-    //   const users = await usersCollection.find(query).toArray();
-    //   console.log(users);
+      const result = await usersCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
 
-    //   res.status(200).json({
-    //     success: true,
-    //     data: "working on it",
-    //   });
-    // });
+      res.status(200).json({
+        result,
+      });
+    });
+
+    // --------------- //
+    // Delete an user
+    // --------------- //
+
+    app.delete("/api/v1/users/:id", verifyJWT, checkAdmin, async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+
+      const result = await usersCollection.deleteOne(filter);
+
+      res.status(200).json({
+        result,
+      });
+    });
 
     // --------------- //
     // Create a phone

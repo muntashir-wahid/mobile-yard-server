@@ -252,6 +252,22 @@ async function run() {
 
     app.get("/api/v1/users", async (req, res) => {
       const email = req.query.email;
+      const accountType = req.query.accountType;
+
+      // Get buyers or sellers
+      if (!email && accountType) {
+        const query = { accountType };
+        console.log(query);
+
+        const users = await usersCollection.find(query).toArray();
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            users,
+          },
+        });
+      }
 
       const query = { email };
 
@@ -264,6 +280,22 @@ async function run() {
         },
       });
     });
+
+    // --------------- //
+    // Get all users
+    // --------------- //
+
+    // app.get("/api/v1/users", async (req, res) => {
+    //   const query = {};
+
+    //   const users = await usersCollection.find(query).toArray();
+    //   console.log(users);
+
+    //   res.status(200).json({
+    //     success: true,
+    //     data: "working on it",
+    //   });
+    // });
 
     // --------------- //
     // Create a phone

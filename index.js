@@ -167,6 +167,7 @@ async function run() {
 
     const checkQuerys = async (req, res, next) => {
       const query = req.query;
+
       if (query?.isAdvertised) {
         const filter = { isAdvertised: true, state: "available" };
         const phones = await phonesCollection.find(filter).toArray();
@@ -178,6 +179,18 @@ async function run() {
           },
         });
       }
+
+      if (query?.report) {
+        const filter = { report: true };
+        const reportedPhones = await phonesCollection.find(filter).toArray();
+        return res.status(200).json({
+          success: true,
+          data: {
+            reportedPhones,
+          },
+        });
+      }
+
       next();
     };
 
@@ -508,17 +521,36 @@ async function run() {
           });
         }
 
-        // if (query?.state) {
-        //   result = await phonesCollection.updateOne(filter, {
-        //     $set: {
-        //       state: "sold",
-        //     },
-        //   });
-        // }
-
         res.status(200).json(result);
       }
     );
+
+    // --------------------------- //
+    // Update for reported phone
+    // -------------------------- //
+
+    app.put("/api/v1/phones/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = req.query;
+      const filter = { _id: ObjectId(id) };
+
+      const option = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          report: true,
+        },
+      };
+
+      if (query.report) {
+        const result = await phonesCollection.updateOne(
+          filter,
+          updatedDoc,
+          option
+        );
+
+        res.status(200).json(result);
+      }
+    });
 
     // --------------- //
     // Create a booking

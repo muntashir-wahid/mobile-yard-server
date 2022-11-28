@@ -8,6 +8,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const morgan = require("morgan");
 const { decode } = require("punycode");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SK);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -92,6 +93,7 @@ async function run() {
     };
 
     // Check a sellers verified status
+
     const checkSellerVerifedStatus = async (req, res, next) => {
       const query = req.query;
       if (query?.email && query?.checkFor) {
@@ -166,7 +168,7 @@ async function run() {
     const checkQuerys = async (req, res, next) => {
       const query = req.query;
       if (query?.isAdvertised) {
-        const filter = { isAdvertised: true };
+        const filter = { isAdvertised: true, state: "available" };
         const phones = await phonesCollection.find(filter).toArray();
 
         return res.status(200).json({
@@ -176,6 +178,26 @@ async function run() {
           },
         });
       }
+      next();
+    };
+
+    // Update available status to sold
+
+    const changeAvailableState = async (req, res, next) => {
+      const query = req.query;
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+
+      if (query?.state) {
+        const result = await phonesCollection.updateOne(filter, {
+          $set: {
+            state: "sold",
+          },
+        });
+
+        return res.status(200).json(result);
+      }
+
       next();
     };
 
@@ -229,6 +251,12 @@ async function run() {
         }
       );
     });
+
+    // ************************* //
+
+    // All API endpoints
+
+    // ************************* //
 
     // -------------- //
     // Create a brand
@@ -385,7 +413,7 @@ async function run() {
 
     app.get("/api/v1/phones/:brandId", async (req, res) => {
       const phoneBrand = req.params.brandId;
-      const query = { phoneBrand };
+      const query = { phoneBrand, state: "available" };
 
       const phones = await phonesCollection.find(query).toArray();
 
@@ -450,6 +478,7 @@ async function run() {
 
     app.patch(
       "/api/v1/phones/:id",
+      changeAvailableState,
       verifyJWT,
       checkSeller,
       async (req, res) => {
@@ -467,9 +496,13 @@ async function run() {
           });
         }
 
-        if (query?.state) {
-          console.log("sold");
-        }
+        // if (query?.state) {
+        //   result = await phonesCollection.updateOne(filter, {
+        //     $set: {
+        //       state: "sold",
+        //     },
+        //   });
+        // }
 
         res.status(200).json(result);
       }
@@ -497,6 +530,82 @@ async function run() {
         });
       }
     );
+
+    // ------------------- //
+    // Get a users booking
+    // ------------------ //
+
+    app.get("/api/v1/bookings", async (req, res) => {
+      const { email } = req.query;
+      const filter = { bookerEmail: email };
+
+      const orders = await bookingsCollection.find(filter).toArray();
+
+      res.status(200).json({
+        success: true,
+        data: {
+          orders,
+        },
+      });
+    });
+
+    // ------------------- //
+    // Get a booking
+    // ------------------ //
+
+    app.get("/api/v1/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+
+      const booking = await bookingsCollection.findOne(query);
+
+      res.status(200).json(booking);
+    });
+
+    // ----------------------- //
+    // Update booking as paid
+    // --------------------- //
+
+    app.put("/api/v1/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const paymentInfo = req.body;
+      const option = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          payment: { ...paymentInfo },
+        },
+      };
+
+      const result = await bookingsCollection.updateOne(
+        filter,
+        updatedDoc,
+        option
+      );
+
+      res.status(200).json(result);
+    });
+
+    // ---------------------- //
+    // Stripe payment intent
+    // -------------------- //
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+
+      const amount = price * 100;
+
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
   } finally {
   }
 }

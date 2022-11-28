@@ -305,6 +305,18 @@ async function run() {
     app.post("/api/v1/users", async (req, res) => {
       const user = req.body;
 
+      const filter = { ...user };
+      const alreadyExisterdUser = await usersCollection.findOne(filter);
+
+      if (alreadyExisterdUser) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            user: alreadyExisterdUser,
+          },
+        });
+      }
+
       const result = await usersCollection.insertOne(user);
       user._id = result.insertedId;
 
